@@ -13,8 +13,7 @@ def _():
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(
-        r"""
+    mo.md(r"""
     # RAG over open-access papers
 
     A minimal retrieval-augmented generation pipeline, one stage per section:
@@ -26,8 +25,7 @@ def _(mo):
     5. **Generate** an answer with citations (mellea `instruct`)
 
     Every stage is a plain function, so the cells below are just wiring.
-    """
-    )
+    """)
     return
 
 
@@ -72,7 +70,6 @@ def _(Path, os):
     # Leave MELLEA_MODEL_ID empty to use whatever mellea's default is.
     MELLEA_BACKEND = os.environ.get("MELLEA_BACKEND", "ollama")
     MELLEA_MODEL_ID = os.environ.get("MELLEA_MODEL_ID", "")
-
     return (
         CHUNK_CHARS,
         COLLECTION_NAME,
@@ -86,7 +83,9 @@ def _(Path, os):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(r"""## 1. Fetch open-access PDFs by DOI""")
+    mo.md(r"""
+    ## 1. Fetch open-access PDFs by DOI
+    """)
     return
 
 
@@ -162,15 +161,13 @@ def _(DOIS, PDF_DIR, UNPAYWALL_EMAIL, configure_unpaywall, fetch_papers, mo):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(
-        r"""
+    mo.md(r"""
     ## 2. Extract each PDF to a document
 
     `RichDocument` is mellea's docling-backed extractor: it converts the PDF and
     renders it as Markdown. `do_ocr=False` keeps it to the embedded text layer, which
     is what these papers have and avoids pulling down OCR weights.
-    """
-    )
+    """)
     return
 
 
@@ -205,14 +202,12 @@ def _(extract_documents, mo, papers):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(
-        r"""
+    mo.md(r"""
     ## 3. Index the documents in Chroma
 
     A default `PersistentClient()` writes to `./chroma` and embeds with Chroma's
     built-in model, so there is nothing to configure.
-    """
-    )
+    """)
     return
 
 
@@ -293,25 +288,24 @@ def _(CHUNK_CHARS, COLLECTION_NAME, client, documents, index_documents, mo):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(r"""## 4. Retrieve the chunks relevant to a query""")
+    mo.md(r"""
+    ## 4. Retrieve the chunks relevant to a query
+    """)
     return
 
 
-@app.cell
-def _():
-    def retrieve(collection, query: str, n_results: int) -> list[dict]:
-        """Nearest chunks for a query, flattened into one record per hit."""
-        result = collection.query(query_texts=[query], n_results=n_results)
-        return [
-            {"text": text, "metadata": metadata, "distance": distance}
-            for text, metadata, distance in zip(
-                result["documents"][0],
-                result["metadatas"][0],
-                result["distances"][0],
-            )
-        ]
-
-    return (retrieve,)
+@app.function
+def retrieve(collection, query: str, n_results: int) -> list[dict]:
+    """Nearest chunks for a query, flattened into one record per hit."""
+    result = collection.query(query_texts=[query], n_results=n_results)
+    return [
+        {"text": text, "metadata": metadata, "distance": distance}
+        for text, metadata, distance in zip(
+            result["documents"][0],
+            result["metadatas"][0],
+            result["distances"][0],
+        )
+    ]
 
 
 @app.cell
@@ -326,7 +320,7 @@ def _(mo):
 
 
 @app.cell
-def _(N_RESULTS, collection, mo, query_input, retrieve):
+def _(N_RESULTS, collection, mo, query_input):
     hits = retrieve(collection, query_input.value, N_RESULTS)
 
     mo.md(
@@ -342,8 +336,7 @@ def _(N_RESULTS, collection, mo, query_input, retrieve):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(
-        r"""
+    mo.md(r"""
     ## 5. Generate an answer with citations
 
     Each retrieved chunk goes into mellea's `grounding_context` under a `source_N`
@@ -354,8 +347,7 @@ def _(mo):
     judge of its own grounding, so the second requirement often fails validation
     even when the answer is properly sourced. mellea retries within its loop budget
     and then returns its best attempt, which is what renders below.
-    """
-    )
+    """)
     return
 
 
@@ -409,7 +401,15 @@ def _(mo):
 
 
 @app.cell
-def _(answer_with_citations, citation_label, hits, m, mo, query_input, run_button):
+def _(
+    answer_with_citations,
+    citation_label,
+    hits,
+    m,
+    mo,
+    query_input,
+    run_button,
+):
     mo.stop(not run_button.value, mo.md("*Press **Generate answer** to run the model.*"))
 
     answer = answer_with_citations(m, query_input.value, hits)
